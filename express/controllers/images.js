@@ -1,6 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const fs = require('fs').promises;
+const { validationResult } = require("express-validator");
 
 async function publicIndex(req, res, next) {
     try {
@@ -74,6 +75,17 @@ async function store(req, res, next) {
 
     try{
         image = req.file;
+        const validation = validationResult(req);
+      
+
+        if (!validation.isEmpty()) {
+            if (image) {
+                const imagePath = `public/${image.filename}`;
+                await fs.unlink(imagePath);
+            }
+            return next(new Error(`${validation.array()[0].msg}`))
+        }
+        
         const request = {...req.body};
 
         if (request.published === "true"){
@@ -121,6 +133,16 @@ async function update(req, res, next) {
     let image = null;
     try {
         image = req.file;
+        const validation = validationResult(req);
+      
+
+        if (!validation.isEmpty()) {
+            if (image) {
+                const imagePath = `public/${image.filename}`;
+                await fs.unlink(imagePath);
+            }
+            return next(new Error(`${validation.array()[0].msg}`))
+        }
 
         if (req.body.published === "true") {
             req.body.published = true;
@@ -143,11 +165,12 @@ async function update(req, res, next) {
                 published: req.body.published,
                 ...(req.body.categories && req.body.categories.length > 0
                     ? {
-                          categories: {
-                              connect: req.body.categories.map((categoryId) => ({
-                                  id: parseInt(categoryId),
-                              })),
-                          },
+                        categories: {
+                            set:[],
+                            connect: req.body.categories.map((categoryId) => ({
+                                id: parseInt(categoryId),
+                            })),
+                        },
                       }
                     : {}),
             },
