@@ -141,7 +141,7 @@ async function update(req, res, next) {
                 const imagePath = `public/${image.filename}`;
                 await fs.unlink(imagePath);
             }
-            return next(new Error(`${validation.array()[0].msg}`))
+            next(new Error(`${validation.array()[0].msg}`))
         }
 
         if (req.body.published === "true") {
@@ -161,7 +161,9 @@ async function update(req, res, next) {
             data: {
                 title: req.body.title,
                 description: req.body.description,
-                image: image.filename,
+                ...(image && image.filename
+                    ? { image: image.filename }
+                    : {}),
                 published: req.body.published,
                 ...(req.body.categories && req.body.categories.length > 0
                     ? {
@@ -234,15 +236,23 @@ async function destroy(req, res, next) {
         }
 
         const imagePath = `public/${imageToDelete.filename}`;
-        await fs.unlink(imagePath);
 
+        // Verifica se il file esiste prima di tentare di cancellarlo
+        const fileExists = await fs.access(imagePath)
+            .then(() => true)
+            .catch(() => false);
+
+        if (fileExists) {
+            await fs.unlink(imagePath);
+        } 
         const result = await prisma.image.delete({
             where: {
                 id: imageId,
             },
-        });
 
+        });
         res.json({ message: 'Immagine cancellata con successo' });
+
     } catch (error) {
         next(error);
     }
