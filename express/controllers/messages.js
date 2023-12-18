@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 async function store(req, res, next) {
     try {
         const { email, text } = req.body;
+        console.log(req.body)
 
         const newMessage = await prisma.message.create({
             data: {

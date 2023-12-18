@@ -41,7 +41,7 @@ imagesController.store);
 
 router.get("/:id", authHandler, imagesController.show);
 
-router.put("/:id", authHandler , multer({ storage: storage }).single("image"), 
+router.put("/:id", authHandler, 
     body('title')
         .trim()
         .isLength({ min: 1 }).withMessage('Il titolo è obbligatorio')

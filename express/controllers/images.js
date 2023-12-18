@@ -50,12 +50,14 @@ async function publicShow(req, res, next) {
 };
 
 async function index(req, res, next) {
+    console.log(req.user)
     try {
         const { search } = req.query;
    
 
         const result = await prisma.image.findMany({
             where: {
+            userId: req.user.id,
             title: { contains: search },
         },
         include:{
@@ -87,13 +89,15 @@ async function store(req, res, next) {
         }
         
         const request = {...req.body};
+        
 
         if (request.published === "true"){
             request.published = true
         } else if (request.published === "false") {
             request.published = false
-        }      
-
+        }  
+        console.log(req.body)
+     
     
         const result = await prisma.image.create({
             data: {
@@ -131,16 +135,15 @@ async function store(req, res, next) {
 
 async function update(req, res, next) {
     let image = null;
+    
+   
+
     try {
-        image = req.file;
+      
         const validation = validationResult(req);
       
 
         if (!validation.isEmpty()) {
-            if (image) {
-                const imagePath = `public/${image.filename}`;
-                await fs.unlink(imagePath);
-            }
             next(new Error(`${validation.array()[0].msg}`))
         }
 
@@ -153,6 +156,11 @@ async function update(req, res, next) {
         const oldImage = await prisma.image.findUnique({
             where: { id: parseInt(req.params.id) },
         });
+        console.log(req.body.userId)
+        console.log(oldImage.userId)
+        if (oldImage.userId !== req.body.userId) {
+            throw new Error('non hai i permessi!')
+        }
 
         const result = await prisma.image.update({
             where: {
@@ -161,9 +169,6 @@ async function update(req, res, next) {
             data: {
                 title: req.body.title,
                 description: req.body.description,
-                ...(image && image.filename
-                    ? { image: image.filename }
-                    : {}),
                 published: req.body.published,
                 ...(req.body.categories && req.body.categories.length > 0
                     ? {
@@ -182,17 +187,11 @@ async function update(req, res, next) {
         });
 
     
-        if (oldImage && oldImage.image) {
-            const oldImagePath = `public/${oldImage.image}`;
-            await fs.unlink(oldImagePath);
-        }
+       
 
         res.json({ message: "Immagine modificata", result });
     } catch (error) {
-        if (image) {
-            const imagePath = `public/${image.filename}`;
-            await fs.unlink(imagePath);
-        }
+       
         next(error);
     }
 }
@@ -237,7 +236,6 @@ async function destroy(req, res, next) {
 
         const imagePath = `public/${imageToDelete.filename}`;
 
-        // Verifica se il file esiste prima di tentare di cancellarlo
         const fileExists = await fs.access(imagePath)
             .then(() => true)
             .catch(() => false);
